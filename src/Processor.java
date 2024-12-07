@@ -1,7 +1,9 @@
+import java.util.Random;
+
 public class Processor {
-    private Memory memoryHierarchy; // Primeiro nível da hierarquia
+    private Memory memoryHierarchy; 
     private int bufferSize;
-    private int stride; // Apenas para o padrão sequencial
+    private int stride; 
     private int accessCount;
 
     public Processor(Memory memoryHierarchy, int bufferSize, int stride, int accessCount) {
@@ -13,18 +15,19 @@ public class Processor {
 
     public void runSequentialAccess() {
         int address = 0;
+        Random r = new Random();
         for (int i = 0; i < accessCount; i++) {
-            System.out.println("Acesso sequencial ao endereço: " + address);
-            memoryHierarchy.access(address, false); // Acesso de leitura
-            address = (address + stride) % bufferSize; // Reinicia quando atingir o buffer
+            // System.out.println("Acesso ao endereço: " + address);
+            memoryHierarchy.access(address, r.nextBoolean());
+            address = (address + stride) % bufferSize; 
         }
     }
 
     public void runRandomAccess() {
+        Random r = new Random();
         for (int i = 0; i < accessCount; i++) {
-            int address = (int) (Math.random() * bufferSize);
-            System.out.println("Acesso aleatório ao endereço: " + address);
-            memoryHierarchy.access(address, false); // Acesso de leitura
+            int address = r.nextInt(bufferSize+1);
+            memoryHierarchy.access(address, r.nextBoolean()); 
         }
     }
 }
