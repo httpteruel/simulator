@@ -6,7 +6,10 @@ public abstract class Memory {
         this.name = name;
         this.latency = latency;
     }
-    public abstract int access(int address, boolean isWrite); // Método abstrato para acessar a memória
+    public abstract int access(int address, boolean isWrite); 
+
+    public abstract void showEstatistics();
+    
     public String getName() {
         return name;
     }
