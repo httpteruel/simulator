@@ -3,29 +3,24 @@ public class Information {
     private int misses = 0;
     private int timesRead = 0;
     private int timesWritten = 0;
-    
-    int Information[] = {hits, misses, timesRead, timesWritten};
 
-    public Information(){
-    }
-
-    public void hit(){
+    public void hit() {
         hits++;
     }
 
-    public void miss(){
+    public void miss() {
         misses++;
     }
 
-    public void finalAcess(){
+    public void finalAcess() {
         timesRead = hits + misses;
     }
 
-    public void write(){
+    public void write() {
         timesWritten++;
     }
 
-    public void read(){
+    public void read() {
         timesRead++;
     }
 
@@ -45,16 +40,10 @@ public class Information {
         return timesWritten;
     }
 
-    public int[] getInformation() {
-        return Information;
-    }
-
-    public void reset(){
+    public void reset() {
         this.hits = 0;
         this.misses =  0;
         this.timesRead =  0;
-        this.timesWritten = 0;
-        
+        this.timesWritten = 0;   
     }
-    
 }

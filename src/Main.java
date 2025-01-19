@@ -2,29 +2,21 @@ public class Main {
     public static void main(String[] args) {
         MainMemory mainMemory = new MainMemory("Memória Principal", 200);
         
-        Cache l2Cache = new Cache("Cache L2", 4, 4, 512, 64, false, mainMemory);
-        Cache l1Cache = new Cache("Cache L1", 1, 4, 32, 64, true, l2Cache);
+        // Cache l2Cache = new Cache("Cache L2", 4, 4, 512, 32, false, mainMemory, false);
+        // Cache l1Cache = new Cache("Cache L1", 1, 4, 32, 64, true, l2Cache, false);
+        Cache l2Cache = new Cache("Cache L2", 4, 4, 9, 5, false, mainMemory, true);
+        Cache l1Cache = new Cache("Cache L1", 1, 4, 5, 6, true, l2Cache, true);
 
-        //Memory hierarquia [] = {l1Cache, l2Cache,mainMemory};
+        System.out.println("tamanho da memória L1: "+l1Cache.getMemorySize()+" tamanho dos sets L1: "+l1Cache.getSetSize()+" tamanho da linha L1: "+Cache.getLineSize());
+        System.out.println("tamanho da memória L2: "+l2Cache.getMemorySize()+" tamanho dos sets L2: "+l2Cache.getSetSize()+" tamanho da linha L2: "+Cache.getLineSize());
 
-        Processor processor = new Processor(l1Cache, 20000, 32, 100000);
+        Processor processor = new Processor();
         
-        //l1Cache.preencheCache(1000);
-        //l2Cache.preencheCache(1000);
-
+        l1Cache.fillCache();
+        l2Cache.fillCache();
         
-        // System.out.println("Execução com padrão sequencial:");
-        // processor.runSequentialAccess();
-        // l1Cache.showEstatistics();
+        // processor.runSequentialAccess(l1Cache, 20000, 32, 200);
         
-        System.out.println("\nExecução com padrão aleatório:");
-        processor.runRandomAccess();
-        l1Cache.showEstatistics();
-
-        
-        // l1Cache.printCache();
-        // System.out.println("--------------------------------------------------------");
-        // l2Cache.printCache();
-        // System.out.println("--------------------------------------------------------");
+        processor.runRandomAccess(l1Cache, 20000, 200);
     }
 }

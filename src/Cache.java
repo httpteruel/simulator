@@ -1,27 +1,32 @@
-import java.util.Random;
 
 public class Cache extends Memory {
     private int associativity;
     private int setsize;
-    private static int lineSize;
+    static int lineSize;
     private boolean writeThrough; 
     private Memory nextLevel; 
     private int memorySize; 
-    private boolean dirty;
-    private int cache[][];
+    private Linha cache[][];
+    private int totalLatency;
     Information info = new Information();
-    private int lastUsedLine = 0;
 
-    public Cache(String name, int latency, int associativity, int setsize, int lineSize, boolean writeThrough,
-            Memory nextLevel) {
+    public Cache(String name, int latency, int associativity, int setsize, int lineSize, boolean writeThrough, Memory nextLevel, boolean powerOfTwo) {
         super(name, latency);
         this.associativity = associativity;
-        this.setsize = setsize;
-        Cache.lineSize = lineSize;
-        this.writeThrough = writeThrough;
         this.nextLevel = nextLevel;
-        this.memorySize = (setsize * associativity * lineSize) / 1024;
-        cache = new int[setsize][associativity];
+        this.writeThrough = writeThrough;
+        if(powerOfTwo){
+            this.setsize = (int) Math.pow(2, setsize);
+            Cache.lineSize = (int) Math.pow(2,lineSize);
+            this.memorySize = (this.setsize * associativity * Cache.lineSize) / 1024;
+            cache = new Linha [(this.setsize)][associativity];
+        }
+        else{
+            this.setsize = setsize;
+            Cache.lineSize = lineSize;
+            this.memorySize = (setsize * associativity * lineSize) / 1024;
+            cache = new Linha [setsize][associativity];
+        }
     }
 
     public int getAssociativity() {
@@ -32,11 +37,11 @@ public class Cache extends Memory {
         this.associativity = associativity;
     }
 
-    public int getSetsize() {
+    public int getSetSize() {
         return setsize;
     }
 
-    public void setSetsize(int setsize) {
+    public void setSetSize(int setsize) {
         this.setsize = setsize;
     }
 
@@ -72,70 +77,72 @@ public class Cache extends Memory {
         this.memorySize = memorySize;
     }
 
-    public boolean isDirty() {
-        return dirty;
-    }
-
-    public void setDirty(boolean dirty) {
-        this.dirty = dirty;
-    }
 
     @Override
-    public int access(int address, boolean isWrite) {
-        int set = address % setsize; 
+    public int access(Integer address, boolean isWrite) {
+        int set = address % setsize; //vai ser o indice da linha la de extrai bit
         // System.out.println("set "+set);
         if(isWrite){
-            if(dirty) nextLevel.access(address, isWrite);
-            dirty = false;
             info.write();
-            cache[set][lastUsedLine] = address;
-            // System.out.println("escrita " + getName());
-            // System.out.println("vzs q foi escrito "+ info.getTimesWritten());
-            if(writeThrough) nextLevel.access(address, isWrite);
-            else{
-                if(lastUsedLine==associativity-1){
-                    dirty = true;
-                    nextLevel.access(address, isWrite);
+            for (int i = 0; i < associativity; i++) {
+                if(cache[set][i].status.equals("Inválido")) {
+                    // System.out.println("escrita " + getName());
+                    // System.out.println("vzs q foi escrito "+ info.getTimesWritten());        
+                    cache[set][i].update(address, isWrite, writeThrough);
+                    if(writeThrough) totalLatency += nextLevel.access(address, isWrite);
+                    totalLatency += latency;
+                    return latency;
                 }
             }
-            lastUsedLine = (lastUsedLine + 1) % associativity; 
+            int lru = Linha.compareLastUsedLine(cache[set]);
+            if(!writeThrough){
+                if(cache[set][lru].status.equals("Sujo")) {
+                    totalLatency += nextLevel.access(cache[set][lru].tag, true);
+                }
+                cache[set][lru].update(address, isWrite, writeThrough);
+                totalLatency += latency;
+                return latency;
+            }
+            cache[set][lru].update(address, isWrite, writeThrough);
+            totalLatency += totalLatency += nextLevel.access(cache[set][lru].tag, true);
             return latency;
         }
         else{
             info.read();
-            for (int i = 0; i < cache[0].length; i++) {
-                if (cache[set][i] == address) {
+            for (int i = 0; i < associativity; i++) {
+                // cache[set][0].print();
+                if (cache[set][i].tag == address && !cache[set][i].status.equals("Inválido")) {
                     info.hit();
+                    cache[set][i].usage();
                     // System.out.println("Cache hit: " + name);
                     // System.out.println("Address: " + address);
-                    return latency; // Latência local da cache
+                    return latency;
                 }
             } 
             // System.out.println("Cache miss: " + name);
             // System.out.println("Adress: " + address);
             // System.out.println("Content: " + cache[0][1]);
             info.miss();
-            return latency += nextLevel.access(address, isWrite);
+            int lru = Linha.compareLastUsedLine(cache[set]);
+            if(cache[set][lru].status.equals("Sujo")) {
+                totalLatency += nextLevel.access(cache[set][lru].tag, true);
+                //ver como vai ficar, pq se eu só enviar a tag, eu vou precisar fazer uma lógica pra pegar o indice que seria o set, pq eu provavelmente passaria o endereço e tiraria o indice e o tag em acess, mas liniha não tem indice, entendeu? 
+            }
+            cache[set][lru].update(address, isWrite, writeThrough);
+            totalLatency += nextLevel.access(address, isWrite);
+            return latency;
         }
     }
 
-    public void preencheCache(int bufferSize) {
-        Random r = new Random();
+    public void fillCache() {
         for (int i = 0; i < cache.length; i++) {
             for (int j = 0; j < cache[i].length; j++) {
-                int end = 0; 
-                do{
-                    int low = 0;
-                    int high = bufferSize;
-                    end = r.nextInt(high-low) + low+1;
-                }     
-                while( end % setsize != i);
-                cache[i][j] = end;
+                cache[i][j] = new Linha();
             }
         }
     }
 
-    public void printCache(){
+    public void printCache() {
         for (int i = 0; i < cache.length; i++) {
             System.out.print("{");
             for (int j = 0; j < cache[i].length; j++) {
@@ -145,10 +152,19 @@ public class Cache extends Memory {
         }
     }
 
+    public void printBloco(int set) {
+        System.out.print("{");
+        for (int j = 0; j < cache[set].length; j++) {
+            System.out.print(cache[set][j]+",");
+        }
+        System.out.println("}");
+    }
+
+    
     @Override
     public void showEstatistics(){
         System.out.println("----------------------------------------------------");
-        System.out.println("Total time required (cycles): "+ latency);
+        System.out.println("Total time required (cycles): "+ totalLatency);
         System.out.println("----------------------------------------------------");
         System.out.println("Stats of "+ name);
         System.out.println(name + " size "+ memorySize +" KB");
@@ -159,7 +175,4 @@ public class Cache extends Memory {
         nextLevel.showEstatistics();
         info.reset();
     }
-
-    
-
 }
